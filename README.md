@@ -2,7 +2,7 @@
 
 Multi-lens code review for Ruby on Rails changes, built as Claude Code subagents.
 
-Six narrow reviewers look at a change from different angles. An orchestrator decides which of them are relevant, runs them without letting them see each other's work, merges what they find, re-checks anything serious against the real files, and reports with a confidence level. Nothing in here edits code.
+Six narrow reviewers look at a change from different angles. An orchestrator decides which of them are relevant, runs them without letting them see each other's work, merges what they find, re-checks anything serious against the real files, and reports with a confidence level. None of them are given editing tools.
 
 ## Why it is built this way
 
@@ -14,9 +14,20 @@ Most attempts at AI code review fail the same way. You point a model at a diff, 
 
 **Agreement between independent lenses is evidence.** When two reviewers with different scopes land on the same line for different reasons, that is worth more than either finding alone, and the merged finding is reported with higher confidence. This signal is free and most pipelines throw it away by deduplicating silently.
 
-**Correlated blind spots are the real failure mode.** Running six passes on the same model is not six opinions, it is one opinion repeated. Where it matters, a reviewer is pinned to a different model from the one that produced the change, so the gaps are less likely to line up. Within one vendor's models this helps less than using a genuinely different family would, so treat it as a reduction in correlation rather than a cure.
+**Correlated blind spots are the real failure mode.** Running six passes on the same model is not six opinions, it is one opinion repeated.
 
-**One pass is framed adversarially.** "Review this change" and "find what is wrong with this change" produce measurably different lists. Both framings are useful, so both are used and the results are merged rather than averaged.
+The agents here ship without a model pinned, because the right choice depends on what you have. Set one per agent in the frontmatter, and pin at least the lens most likely to catch an outright bug to something other than whatever wrote the change:
+
+```yaml
+---
+name: payments-reviewer
+model: opus
+---
+```
+
+Within one vendor's models this helps less than a genuinely different family would. Treat it as a reduction in correlation, not a cure.
+
+**Framing changes what comes back.** "Review this change" and "find what is wrong with this change" produce measurably different lists, so the orchestrator sends the adversarial framing to the lens covering the riskiest part of the change and the neutral one to the rest. The results are merged rather than averaged, because the point is the union of two views, not their midpoint.
 
 **Serious findings get verified before they are reported.** Most false positives come from a model reasoning about code it only half-read. Anything heading for high severity goes back to the files, reads the surrounding code, and either confirms itself or is dropped. This step costs time and removes most of the embarrassment.
 
@@ -73,7 +84,7 @@ Each reviewer owns a small number of checks. This is deliberate. A single review
 | `migration-reviewer` | locking migrations, unsafe column changes, backfills, indexes on large tables |
 | `jobs-reviewer` | enqueue inside a transaction, object arguments, retry safety, queue starvation, dead letters |
 | `test-reviewer` | missing failure cases, assertions that cannot fail, the untested error path |
-| `payments-reviewer` | idempotency, database-level uniqueness, money types, append-only history, reconciliation |
+| `payments-reviewer` | idempotency, database-level uniqueness, money types, card data, out-of-order events, reconciliation |
 
 Two of these are the ones most codebases do not have.
 
@@ -83,7 +94,21 @@ Two of these are the ones most codebases do not have.
 
 ### What is deliberately not here
 
-No cache lens and no API contract lens, although both matter. Cache keys and response shapes are where codebases differ most from each other, so a generic version would be vague enough to be noise. Those are the first two things worth writing yourself, which is the point of the next section.
+No cache lens and no API contract lens, although both matter. Cache keys and response shapes are where codebases differ most from each other, so a generic version would be vague enough to be noise. Those are the first two things worth writing yourself, which is the point of a later section.
+
+## Using it
+
+Requires Claude Code. Copy `agents/` and `skills/` into your project's `.claude/` directory, then either name the lenses you want:
+
+```
+Review this change with the payments lens and the jobs lens.
+```
+
+or run the whole pipeline:
+
+```
+/review-change
+```
 
 ## Adapting this to your codebase
 
@@ -109,20 +134,6 @@ The failure mode to design against is not a missed bug, it is a lens whose outpu
 The claim this pipeline rests on is measurable, so measure it. Track what fraction of reported findings the author acts on and what fraction they dismiss.
 
 A rising dismissal rate is the early warning. It means the thing is drifting toward confident noise, and the fix is to raise the confidence threshold or narrow whichever lens is producing the dismissals, not to add more checks. If you are not watching that ratio, you will find out the pipeline stopped being useful about six months after it stopped being useful.
-
-## Using it
-
-Copy `agents/` and `skills/` into your project's `.claude/` directory, then either name the lenses you want:
-
-```
-Review this change with the payments lens and the jobs lens.
-```
-
-or run the whole pipeline:
-
-```
-/review-change
-```
 
 ## What this does not do
 

@@ -43,6 +43,10 @@ If the change touches money in any way, `payments-reviewer` runs. That one is no
 
 Dispatch the chosen lenses **in parallel, in a single batch**, and give each one only the change and the repository. Do not pass one reviewer's output to another, and do not run them in sequence so that later ones can see earlier results.
 
+**Frame one of them adversarially.** Decide which lens covers the riskiest part of this change, usually the one touching money, authorization or a destructive migration, and dispatch that one with "find what is wrong with this change" rather than "review this change". Send the neutral framing to the rest. The two framings produce different lists from the same model, and you want both.
+
+Say in the report which lens got the adversarial framing. If it found things the neutral lenses did not, that is worth knowing over time.
+
 This is the part that is easy to get wrong and invisible when you do. Reviewers that can see each other's findings stop being independent: the second one anchors on the first, agreement becomes automatic, and the merge step below is measuring an echo rather than a signal.
 
 Where the pipeline supports pinning a model per agent, the lens most likely to catch an outright bug should not run on the same model that produced the change.
