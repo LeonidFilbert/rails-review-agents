@@ -101,6 +101,14 @@ Earning.create!(amount: corrected_amount - earning.amount, reason: :adjustment, 
 
 Flag any `update`, `update_column` or `delete` against a ledger entry, a settled invoice, a payout or anything else a customer could dispute. Financial history is evidence. Corrections are new entries.
 
+### 5a. Card data that should never be in your process
+
+A primary account number, a CVV or a full magnetic stripe appearing anywhere in application code is the highest severity finding available here, and it stays that way wherever it appears: a parameter, a log line, an exception payload, a background job argument, a database column, a test fixture.
+
+The whole point of a hosted field or a provider token is that the number never reaches your servers. Code that accepts one has moved the application into a compliance scope its owners almost certainly have not budgeted for, and an exception reporter will happily ship it to a third party.
+
+Check the filtered parameters list as well as the code, and flag any payment field that is not filtered.
+
 ### 6. Signature verification
 
 Verify the signature against the **raw request body**, before parsing, before any write, and before deciding the event is real. A handler that parses JSON and then verifies is already exposed. Report any webhook endpoint with no verification at all as the highest severity finding in the review.

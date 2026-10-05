@@ -20,6 +20,8 @@ If the caller named a branch or a commit range, use that. If the working tree is
 
 Read the changed files. You need enough context to route, not to review.
 
+**If the change is large**, do not hand a thousand-line diff to six reviewers and hope. Split it along seams that already exist, usually one slice per concern: the migration and its model, the controller and its policy, the job and what enqueues it. Run the pipeline per slice and report per slice. A reviewer given more than it can hold produces confident generalities, which is the exact failure this design exists to avoid. If you split, say so in the report, because findings that cross a seam are the ones you are most likely to miss.
+
 ## 2. Choose the lenses
 
 Route on what the change touches, not on what it is called:

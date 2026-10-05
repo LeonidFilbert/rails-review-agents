@@ -31,6 +31,21 @@ add_index :events, :provider_event_id, algorithm: :concurrently
 
 On a large table the first form takes the table out of service for as long as the build takes. Note that `algorithm: :concurrently` requires `disable_ddl_transaction!`, and that a concurrent build can fail and leave an invalid index behind, so the migration needs to be re-runnable.
 
+### 1a. `add_reference` builds an index without telling you
+
+```ruby
+# ❌ adds the column AND a blocking index build
+add_reference :orders, :customer, foreign_key: true
+
+# ✅ column now, index separately and concurrently
+add_reference :orders, :customer, index: false
+# then, in its own migration:
+disable_ddl_transaction!
+add_index :orders, :customer_id, algorithm: :concurrently
+```
+
+`index: true` is the default, and the index it creates is not concurrent. The foreign key validates existing rows under a lock on top of that. This one slips through review constantly because the line looks like a column addition.
+
 ### 2. Adding a column with a default
 
 On modern PostgreSQL this is cheap for a plain default and still expensive when a volatile expression forces a rewrite. On older versions it rewrites the whole table. Check the version the project targets before deciding, and say what you assumed.

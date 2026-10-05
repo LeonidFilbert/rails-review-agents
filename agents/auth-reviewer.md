@@ -50,6 +50,15 @@ If a body parameter names another record, the policy must verify ownership of *t
 
 When you flag this, say whether such a test exists. Happy-path coverage does not satisfy it.
 
+### 4a. Authorizing the class instead of the record
+
+```ruby
+authorize Invoice      # ❌ "may this user touch invoices at all"
+authorize @invoice     # ✅ "may this user touch THIS invoice"
+```
+
+Both forms are legal and they look nearly identical in review. On a member action the class form asks a question nobody wanted the answer to: it passes for any user allowed to use the feature, whichever row they aimed at. Flag every class-level authorize on an action that loads a specific record.
+
 ### 5. Role checks standing in for ownership
 
 ```ruby

@@ -24,9 +24,36 @@ Most attempts at AI code review fail the same way. You point a model at a diff, 
 
 **Low confidence is reported as low confidence.** Findings carry a calibrated level, and below the threshold the orchestrator stops guessing and asks a human. An agent that says "I am not sure about this one, look here" is more useful than one that is always certain.
 
-**Reviewers are read-only.** They have Read, Grep, Glob and Bash. They cannot edit. The decision to change code stays with a person, which is also what keeps the output honest: a reviewer that cannot fix things has no incentive to prefer the findings it knows how to fix.
+**Reviewers do not edit.** They have Read, Grep, Glob and Bash, and no editing tools. The decision to change code stays with a person, which is also what keeps the output honest: a reviewer that cannot fix things has no incentive to prefer the findings it knows how to fix.
+
+Worth being exact about this, because "read-only" would be a stronger claim than the tool list supports: Bash is there so a reviewer can run `git diff`, read a schema or search the tree, and a shell can obviously write files if a model decides to. The editing tools are withheld and every agent is told not to change anything, but the guarantee is one of instruction and least privilege, not a sandbox. If you need it to be a hard boundary, remove Bash from the agents that do not need it and give them the specific commands instead.
 
 ## The pipeline
+
+```mermaid
+flowchart TD
+    A[Change] --> B[Scope: pick the relevant lenses]
+    B --> L1[query]
+    B --> L2[auth]
+    B --> L3[migration]
+    B --> L4[jobs]
+    B --> L5[test]
+    B --> L6[payments]
+    L1 --> M[Merge]
+    L2 --> M
+    L3 --> M
+    L4 --> M
+    L5 --> M
+    L6 --> M
+    M --> V{Verify against the files}
+    V -->|confirmed| C[Calibrate confidence]
+    V -->|not confirmed| X[Dropped, never reported]
+    V -->|cannot tell from the code| Q[Question for a human]
+    C --> R[Report]
+    Q --> R
+```
+
+The part the diagram cannot show is the absence: the lenses never see each other's output. They meet for the first time at the merge.
 
 1. **Scope.** Look at what actually changed and pick the relevant lenses. A migration-only change does not pay for a payments review.
 2. **Independent review.** The chosen lenses run against the change, each blind to the others.

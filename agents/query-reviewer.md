@@ -71,6 +71,20 @@ orders.select { |o| o.paid? }  # ❌ filters in Ruby
 orders.where(paid: true)       # ✅
 ```
 
+### 4a. NULL does not behave like a value
+
+```ruby
+Order.where.not(status: 'cancelled')
+```
+
+This silently excludes every row where `status` is NULL, because in SQL `NULL <> 'cancelled'` is unknown rather than true. The author almost always meant "everything that is not cancelled", which includes the rows that never got a status.
+
+```ruby
+Order.where(status: nil).or(Order.where.not(status: 'cancelled'))
+```
+
+The same trap sits in `NOT IN` with a nullable column, and in a uniqueness constraint on a nullable column, where two NULLs do not conflict. Flag `where.not` and `NOT IN` on any column the schema allows to be null, and say whether the schema allows it rather than guessing.
+
 ### 5. Bounds
 
 Any collection that grows with usage needs a limit: pagination on reads, a cap on user-supplied arrays of ids, a batch size on iteration. `Model.all.each` is a finding in production code regardless of the current row count.
