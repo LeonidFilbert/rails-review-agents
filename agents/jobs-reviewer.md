@@ -42,13 +42,20 @@ OrderConfirmationJob.perform_later(order.id)
 
 Two failures hide here. The job acts on a stale copy of a record that changed between enqueue and run, and the job raises `DeserializationError` at run time if the record was deleted, which looks like a transient failure and gets retried forever.
 
-### 3. Retries require idempotency
+### 3. Know which delivery guarantee the adapter gives you
 
-Every queue in common use delivers at least once. A worker that dies after doing the work but before acknowledging will run the whole job again.
+This is the check that decides what the rest of the review is looking for, and most teams have never asked it. The two guarantees fail in opposite directions and the adapter chooses for you.
 
-Flag any job that sends, charges, credits, increments, appends or calls a third party without a guard that makes the second run harmless. Ask specifically what happens if the job runs twice, and if the answer is "a duplicate email" that is still a finding.
+**At-most-once.** Open source Sidekiq pops the job out of Redis when a worker picks it up. From that moment it exists only in that process's memory, so a hard kill loses it with no trace and no error. Nothing retries, because nothing knows it existed.
 
-Note for Sidekiq: `acks_late` semantics differ by backend. Do not assume the safe default is on.
+**At-least-once.** Sidekiq Pro with `super_fetch`, Solid Queue and GoodJob keep the job until it is acknowledged, so a dead worker's job comes back. That means it can run twice, including halfway twice.
+
+So the finding depends on the adapter, and you should name it:
+
+- On an at-most-once setup, flag work that *must* happen and has no way to notice it did not. A charge captured, a payout sent, a state transition nobody sweeps for. The answer is usually a reconciliation pass, not a better queue.
+- On an at-least-once setup, flag any job that sends, charges, credits, increments, appends or calls a third party without a guard that makes the second run harmless. "It would only send a duplicate email" is still a finding.
+
+Check the configured adapter before deciding which of these you are reviewing, and say which you assumed. A job that is both safe to lose and safe to repeat is the only one that does not care.
 
 ### 4. Retry configuration and poison jobs
 
@@ -101,8 +108,8 @@ Before reporting a blocker, confirm it in this codebase rather than in general. 
 
 ## Return
 
-- **Findings** — severity, `file:line`, and the interleaving that produces the failure. Be concrete: which two runs, in what order, leave what wrong state.
-- **Configuration gaps** — queues declared but not consumed, retry policies, missing dead-letter monitoring.
-- **Questions** — what you could not confirm, and where you would look.
+- **Findings**: severity, `file:line`, and the interleaving that produces the failure. Be concrete: which two runs, in what order, leave what wrong state.
+- **Configuration gaps**: queues declared but not consumed, retry policies, missing dead-letter monitoring.
+- **Questions**: what you could not confirm, and where you would look.
 
 Do not apply changes.

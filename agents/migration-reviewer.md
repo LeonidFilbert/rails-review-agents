@@ -37,7 +37,20 @@ On modern PostgreSQL this is cheap for a plain default and still expensive when 
 
 ### 3. `null: false` on an existing column
 
-Adding the constraint validates every existing row under a lock. On a large table, add the constraint as `NOT VALID` first and validate separately, or backfill and then constrain. A bare `change_column_null` on a populated table is a finding.
+`change_column_null` scans every row while holding an exclusive lock. On a large table that is an outage.
+
+PostgreSQL has no `NOT VALID` form of `SET NOT NULL`, so the safe route goes through a check constraint:
+
+```ruby
+# 1. add the check without scanning
+execute "ALTER TABLE users ADD CONSTRAINT users_email_not_null CHECK (email IS NOT NULL) NOT VALID"
+# 2. validate it, which takes a weaker lock
+execute "ALTER TABLE users VALIDATE CONSTRAINT users_email_not_null"
+# 3. now SET NOT NULL is cheap: PG 12+ uses the validated constraint instead of rescanning
+change_column_null :users, :email, false
+```
+
+A bare `change_column_null` on a populated table is a finding. Backfill first, in batches, outside the migration.
 
 ### 4. The deploy window
 
@@ -88,9 +101,9 @@ Table size decides most of these, and you usually cannot see it. Say what you as
 
 ## Return
 
-- **Findings** — severity, `file:line`, the lock or the window, and what the user-visible symptom would be.
-- **Safe rewrite** — the migration split into the steps it needs, where that applies.
-- **Deploy order** — if the change needs more than one deploy, say which part ships when.
-- **Questions** — row counts and versions you would need to be sure.
+- **Findings**: severity, `file:line`, the lock or the window, and what the user-visible symptom would be.
+- **Safe rewrite**: the migration split into the steps it needs, where that applies.
+- **Deploy order**: if the change needs more than one deploy, say which part ships when.
+- **Questions**: row counts and versions you would need to be sure.
 
 Do not apply changes.

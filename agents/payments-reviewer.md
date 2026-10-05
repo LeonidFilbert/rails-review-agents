@@ -118,6 +118,21 @@ Retry logic that treats all failures the same is a finding, in both directions.
 
 For declines specifically, the decline code decides whether a retry can ever succeed. Blind retries of permanent declines damage the merchant's approval rate with the issuers, which makes future legitimate payments fail. Flag retry code that does not branch on the reason.
 
+### 8a. Events arrive out of order
+
+Delivery order is not guaranteed and retries make it worse: a redelivered event from two minutes ago can land after a newer one. A handler that assumes sequence writes the older truth over the newer one.
+
+```ruby
+# ❌ a redelivered "updated" overwrites the later "cancelled"
+subscription.update!(status: event.data.status)
+
+# ✅ ignore anything older than what we already applied
+return if subscription.provider_updated_at.present? &&
+          subscription.provider_updated_at >= event.occurred_at
+```
+
+Look for a stored timestamp or version from the provider that the handler compares against, or a state machine that refuses the illegal transition. Flag any handler that sets status straight from the payload with nothing guarding the direction of travel. Cancel then renew, and renew then cancel, must not produce the same end state.
+
 ### 9. Reconciliation
 
 The event log tells you what arrived. It cannot tell you what never did. Ask whether anything compares local state against the provider's own records on a schedule, in both directions: ours missing theirs, and theirs missing ours.
@@ -140,8 +155,8 @@ Before reporting anything at blocker or important severity, read the surrounding
 
 ## Return
 
-- **Findings** — severity, `file:line`, what is wrong, and the specific failure it allows. Describe the failure concretely: which two events, arriving in what order, produce what wrong state.
-- **Missing database constraints** — the exact index or constraint, and what it would prevent.
-- **Questions** — anything you could not confirm from the code, with the file you would need.
+- **Findings**: severity, `file:line`, what is wrong, and the specific failure it allows. Describe the failure concretely: which two events, arriving in what order, produce what wrong state.
+- **Missing database constraints**: the exact index or constraint, and what it would prevent.
+- **Questions**: anything you could not confirm from the code, with the file you would need.
 
 Do not apply changes.

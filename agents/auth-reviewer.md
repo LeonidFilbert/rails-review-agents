@@ -91,8 +91,8 @@ If you can describe the exact request that exploits it, including which id belon
 
 ## Return
 
-- **Findings** — severity, `file:line`, and for anything at blocker level the concrete request: method, path, which parameter carries the foreign id.
-- **Missing adversarial tests** — the actions that need a wrong-tenant test and do not have one.
-- **Questions** — what you could not confirm, and where you would look.
+- **Findings**: severity, `file:line`, and for anything at blocker level the concrete request: method, path, which parameter carries the foreign id.
+- **Missing adversarial tests**: the actions that need a wrong-tenant test and do not have one.
+- **Questions**: what you could not confirm, and where you would look.
 
 Do not apply changes.

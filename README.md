@@ -66,6 +66,23 @@ The real leverage is in encoding the conventions of *your* codebase: the scopes 
 
 The habit worth stealing is smaller than the tooling: **when you notice you are explaining the same thing to an agent for the second time, that explanation is a thing to build, not a thing to repeat.** Most of what is in here started as something I typed twice.
 
+### Writing a lens of your own
+
+Four things separate a reviewer that gets read from one that gets muted:
+
+1. **A narrow scope, named out loud.** Eight checks, not forty. If you cannot write the list of what it owns in one line, it owns too much.
+2. **Examples of both sides.** The wrong code and the right code, in your project's idiom. A rule stated in prose gets interpreted; a pair of examples does not.
+3. **A verification step before reporting.** Say what the reviewer must go and read before it is allowed to call something serious. This is the single highest-value paragraph in any of these files.
+4. **A way to say "I don't know".** Give it a questions section and permission to use it. A reviewer with no way to express doubt will express confidence instead.
+
+The failure mode to design against is not a missed bug, it is a lens whose output people skim.
+
+## Knowing whether it works
+
+The claim this pipeline rests on is measurable, so measure it. Track what fraction of reported findings the author acts on and what fraction they dismiss.
+
+A rising dismissal rate is the early warning. It means the thing is drifting toward confident noise, and the fix is to raise the confidence threshold or narrow whichever lens is producing the dismissals, not to add more checks. If you are not watching that ratio, you will find out the pipeline stopped being useful about six months after it stopped being useful.
+
 ## Using it
 
 Copy `agents/` and `skills/` into your project's `.claude/` directory, then either name the lenses you want:

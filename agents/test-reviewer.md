@@ -90,8 +90,8 @@ Where you can run the suite cheaply, confirm a weak assertion by reasoning about
 
 ## Return
 
-- **Findings** — severity, `file:line`, and for each weak test the specific bug it would miss.
-- **Tests worth adding** — the case, in one line each, ordered by what would catch the most.
-- **Questions** — what you could not confirm, and where you would look.
+- **Findings**: severity, `file:line`, and for each weak test the specific bug it would miss.
+- **Tests worth adding**: the case, in one line each, ordered by what would catch the most.
+- **Questions**: what you could not confirm, and where you would look.
 
 Do not apply changes.

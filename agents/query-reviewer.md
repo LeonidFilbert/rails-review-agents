@@ -29,9 +29,19 @@ Order.includes(:customer).each { |o| puts o.customer.name }
 The cases that get missed:
 - **Through a serializer.** The query looks clean, the association is loaded in the view layer. Follow the serializer for every association it touches.
 - **`count` versus `size`.** On a loaded association `size` uses what is in memory, `count` goes back to the database every time.
+- **`present?` versus `exists?`.** `present?` loads the whole relation to decide whether it is empty. On a check, `exists?` asks the database for one row.
 - **Conditional association access** inside a loop, which only triggers for some rows and so looks fine in a small test.
 
-`find_each` resets the scope, so `find_each` combined with `includes` silently discards the eager load. Flag that pairing wherever it appears.
+### 1a. Batch iteration drops your ordering
+
+`find_each` and `find_in_batches` iterate by primary key and **ignore the order you set on the relation**. Limits are honored, ordering is not.
+
+```ruby
+# ❌ the order is silently gone, rows arrive by id
+Invoice.order(due_on: :asc).find_each { |i| apply_next_payment(i) }
+```
+
+This is quiet and it only matters when the logic depends on sequence, which is exactly when it is expensive. Flag any batch iteration over an ordered relation, and say what the code does with the order.
 
 ### 2. Indexes
 
@@ -103,8 +113,8 @@ If the project logs N+1 warnings in development, say whether the finding appears
 
 ## Return
 
-- **Findings** — severity, `file:line`, what is wrong, and roughly what it costs: how many extra queries, at what row count.
-- **Missing indexes** — the exact columns, in order, and the query they serve.
-- **Questions** — what you could not confirm, and where you would look.
+- **Findings**: severity, `file:line`, what is wrong, and roughly what it costs: how many extra queries, at what row count.
+- **Missing indexes**: the exact columns, in order, and the query they serve.
+- **Questions**: what you could not confirm, and where you would look.
 
 Do not apply changes.
